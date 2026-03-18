@@ -1,3 +1,4 @@
+import os
 from flask import Flask, request, jsonify, render_template_string
 import pandas as pd
 from datetime import datetime
@@ -15,9 +16,11 @@ def create_file():
 
 # 🟢 قراءة البيانات
 def read_users():
-    create_file()
-    return pd.read_excel(FILE)
-
+    try:
+        create_file()
+        return pd.read_excel(FILE)
+    except:
+        return pd.DataFrame(columns=["username", "key", "expiry"])
 # 🟢 حفظ البيانات
 def save_users(df):
     df.to_excel(FILE, index=False)
@@ -70,4 +73,6 @@ def home():
 
 # 🟢 تشغيل السيرفر
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
+    
