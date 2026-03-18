@@ -23,6 +23,9 @@ def read_users():
 
 # API تسجيل الدخول
 @app.route("/login", methods=["POST"])
+@app.route("/")
+def home():
+    return "Server is running ✅"
 def login():
     data = request.json
     username = data.get("username")
