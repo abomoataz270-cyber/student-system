@@ -7,38 +7,50 @@ app = Flask(__name__)
 
 FILE = "users.xlsx"
 
+# إنشاء ملف Excel لو مش موجود
 def create_file():
     if not os.path.exists(FILE):
         df = pd.DataFrame(columns=["username", "key", "expiry"])
         df.to_excel(FILE, index=False)
 
+# قراءة البيانات
 def read_users():
+    create_file()
     try:
-        create_file()
         return pd.read_excel(FILE)
     except:
         return pd.DataFrame(columns=["username", "key", "expiry"])
 
+# الصفحة الرئيسية
 @app.route("/")
 def home():
     return "Server is running ✅"
 
+# تسجيل الدخول
 @app.route("/login", methods=["POST"])
 def login():
-    data = request.json
-    username = data.get("username")
-    key = data.get("key")
+    try:
+        data = request.get_json()
 
-    df = read_users()
+        username = data.get("username")
+        key = data.get("key")
 
-    user = df[(df["username"] == username) & (df["key"] == key)]
+        if not username or not key:
+            return jsonify({"status": "error", "message": "missing data"})
 
-    if user.empty:
-        return jsonify({"status": "fail"})
+        df = read_users()
 
-    expiry = pd.to_datetime(user.iloc[0]["expiry"])
+        user = df[(df["username"] == username) & (df["key"] == key)]
 
-    if expiry < datetime.now():
-        return jsonify({"status": "expired"})
+        if user.empty:
+            return jsonify({"status": "fail"})
 
-    return jsonify({"status": "success"})
+        expiry = pd.to_datetime(user.iloc[0]["expiry"])
+
+        if expiry < datetime.now():
+            return jsonify({"status": "expired"})
+
+        return jsonify({"status": "success"})
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
