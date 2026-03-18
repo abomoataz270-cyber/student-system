@@ -40,8 +40,10 @@ def login():
 
         df = read_users()
 
-        user = df[(df["username"] == username) & (df["key"] == key)]
-
+       user = df[
+    (df["username"].astype(str).str.strip() == str(username).strip()) &
+    (df["key"].astype(str).str.strip() == str(key).strip())
+]
         if user.empty:
             return jsonify({"status": "fail"})
 
