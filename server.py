@@ -7,65 +7,67 @@ app = Flask(__name__)
 
 FILE = "users.xlsx"
 
-# إنشاء ملف Excel لو مش موجود
-if not os.path.exists(FILE):
-    df = pd.DataFrame(columns=["username", "key", "expire"])
+# 🟢 إنشاء ملف لو مش موجود
+def create_file():
+    if not os.path.exists(FILE):
+        df = pd.DataFrame(columns=["username", "key", "expiry"])
+        df.to_excel(FILE, index=False)
+
+# 🟢 قراءة البيانات
+def read_users():
+    create_file()
+    return pd.read_excel(FILE)
+
+# 🟢 حفظ البيانات
+def save_users(df):
     df.to_excel(FILE, index=False)
 
-# ===== تسجيل الدخول =====
+# 🟢 API تسجيل الدخول
 @app.route("/login", methods=["POST"])
 def login():
     data = request.json
-    df = pd.read_excel(FILE)
+    username = data.get("username")
+    key = data.get("key")
 
-    user = df[df["username"] == data["username"]]
+    df = read_users()
 
-    if not user.empty:
-        if user.iloc[0]["key"] == data["key"]:
-            expire = datetime.strptime(str(user.iloc[0]["expire"]), "%Y-%m-%d")
-            if datetime.now() < expire:
-                return jsonify({"status": "success"})
-            else:
-                return jsonify({"status": "expired"})
+    user = df[(df["username"] == username) & (df["key"] == key)]
 
-    return jsonify({"status": "fail"})
+    if user.empty:
+        return jsonify({"status": "fail"})
 
-# ===== لوحة التحكم =====
-@app.route("/", methods=["GET", "POST"])
-def admin():
-    if request.method == "POST":
-        username = request.form["username"]
-        key = request.form["key"]
-        expire = request.form["expire"]
+    expiry = pd.to_datetime(user.iloc[0]["expiry"])
 
-        df = pd.read_excel(FILE)
+    if expiry < datetime.now():
+        return jsonify({"status": "expired"})
 
-        # حذف المستخدم القديم
-        df = df[df["username"] != username]
+    return jsonify({"status": "success"})
 
-        # إضافة الجديد
-        new_row = pd.DataFrame([[username, key, expire]],
-                               columns=["username", "key", "expire"])
+# 🟢 لوحة تحكم بسيطة (Admin)
+@app.route("/")
+def home():
+    df = read_users()
 
-        df = pd.concat([df, new_row])
+    html = """
+    <h2>📊 Admin Panel</h2>
+    <table border=1>
+    <tr>
+        <th>Username</th>
+        <th>Key</th>
+        <th>Expiry</th>
+    </tr>
+    {% for row in data %}
+    <tr>
+        <td>{{row.username}}</td>
+        <td>{{row.key}}</td>
+        <td>{{row.expiry}}</td>
+    </tr>
+    {% endfor %}
+    </table>
+    """
 
-        df.to_excel(FILE, index=False)
+    return render_template_string(html, data=df.to_dict(orient="records"))
 
-    df = pd.read_excel(FILE)
-
-    return render_template_string("""
-    <h2>Admin Panel</h2>
-
-    <form method="post">
-        <input name="username" placeholder="username"><br>
-        <input name="key" placeholder="key"><br>
-        <input name="expire" placeholder="2026-12-31"><br>
-        <button>Save</button>
-    </form>
-
-    <hr>
-    {{table|safe}}
-    """, table=df.to_html())
-
+# 🟢 تشغيل السيرفر
 if __name__ == "__main__":
-    app.run()
+    app.run(host="0.0.0.0", port=5000)
