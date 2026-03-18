@@ -1,5 +1,4 @@
-import os
-from flask import Flask, request, jsonify, render_template_string
+from flask import Flask, request, jsonify
 import pandas as pd
 from datetime import datetime
 import os
@@ -8,24 +7,21 @@ app = Flask(__name__)
 
 FILE = "users.xlsx"
 
-# 🟢 إنشاء ملف لو مش موجود
+# إنشاء الملف لو مش موجود
 def create_file():
     if not os.path.exists(FILE):
         df = pd.DataFrame(columns=["username", "key", "expiry"])
         df.to_excel(FILE, index=False)
 
-# 🟢 قراءة البيانات
+# قراءة البيانات بأمان
 def read_users():
     try:
         create_file()
         return pd.read_excel(FILE)
     except:
         return pd.DataFrame(columns=["username", "key", "expiry"])
-# 🟢 حفظ البيانات
-def save_users(df):
-    df.to_excel(FILE, index=False)
 
-# 🟢 API تسجيل الدخول
+# API تسجيل الدخول
 @app.route("/login", methods=["POST"])
 def login():
     data = request.json
@@ -46,32 +42,12 @@ def login():
 
     return jsonify({"status": "success"})
 
-# 🟢 لوحة تحكم بسيطة (Admin)
+# الصفحة الرئيسية
 @app.route("/")
 def home():
-    df = read_users()
+    return "Server is running ✅"
 
-    html = """
-    <h2>📊 Admin Panel</h2>
-    <table border=1>
-    <tr>
-        <th>Username</th>
-        <th>Key</th>
-        <th>Expiry</th>
-    </tr>
-    {% for row in data %}
-    <tr>
-        <td>{{row.username}}</td>
-        <td>{{row.key}}</td>
-        <td>{{row.expiry}}</td>
-    </tr>
-    {% endfor %}
-    </table>
-    """
-
-    return render_template_string(html, data=df.to_dict(orient="records"))
-
-# 🟢 تشغيل السيرفر
+# تشغيل السيرفر
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
